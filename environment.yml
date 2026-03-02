@@ -13,3 +13,5 @@ dependencies:
   - pip
   - pip:
     - -r requirements.txt
+    # install clm in editable mode, so that changes to the code are reflected immediately
+    - -e .
