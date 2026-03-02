@@ -1,6 +1,6 @@
 <p align="center">
   <img
-    src="https://raw.githubusercontent.com/davidmeijer/CLM-Harvest/main/logo.png"
+    src="./logo.png"
     height="150"
     alt="CLM-Harvest logo"
   >
