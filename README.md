@@ -1,14 +1,10 @@
 <p align="center">
   <img
-    src="https://raw.githubusercontent.com/davidmeijer/CLM-Harvest/main/logo.svg"
+    src="https://raw.githubusercontent.com/davidmeijer/CLM-Harvest/main/logo.png"
     height="150"
     alt="CLM-Harvest logo"
   >
 </p>
-
-<h1 align="center">
-  CLM-Harvest
-</h1>
 
 <p align="center">
     <a href="https://github.com/skinniderlab/CLM/actions/workflows/tests.yml">
