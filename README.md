@@ -1,7 +1,21 @@
-[![Tests](https://github.com/skinniderlab/CLM/actions/workflows/tests.yml/badge.svg)](https://github.com/skinniderlab/CLM/actions/workflows/tests.yml)
-[![Coverage Status](https://coveralls.io/repos/github/skinniderlab/CLM/badge.svg?branch=master)](https://coveralls.io/github/skinniderlab/CLM?branch=master)
+<p align="center">
+  <img
+    src="https://raw.githubusercontent.com/davidmeijer/CLM-Harvest/main/logo.svg"
+    height="150"
+    alt="CLM-Harvest logo"
+  >
+</p>
 
-## CLM-Harvest
+<h1 align="center">
+  CLM-Harvest
+</h1>
+
+<p align="center">
+    <a href="https://github.com/skinniderlab/CLM/actions/workflows/tests.yml">
+      <img alt="Tests" src="https://github.com/skinniderlab/CLM/actions/workflows/tests.yml/badge.svg" /></a>
+    <a href="https://coveralls.io/github/skinniderlab/CLM?branch=master">
+      <img alt="Coverage Status" src="https://coveralls.io/repos/github/skinniderlab/CLM/badge.svg?branch=master" /></a>
+</p>
 
 This repository contains Python source code required to train and evaluate chemical language models for generating natural compound structures.
 
