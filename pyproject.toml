@@ -43,6 +43,10 @@ clm = "clm.__main__:main"
 [tool.setuptools]
 package-dir = {"" = "src"}
 
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["clm", "clm.*", "harvest", "harvest.*"]
+
 [tool.setuptools_scm]
 write_to = "src/clm/_version.py"
 
