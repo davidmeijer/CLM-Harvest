@@ -39,6 +39,7 @@ dynamic = ["version"]
 
 [project.scripts]
 clm = "clm.__main__:main"
+harvest = "harvest.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -70,3 +71,4 @@ dev = [
     "sphinx_rtd_theme",
     "twine"
 ]
+
