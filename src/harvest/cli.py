@@ -8,6 +8,7 @@ import shlex
 import subprocess
 
 from harvest.version import __version__
+from harvest.sample import cmd_sample_unconditional
 
 
 _SLURM_FLAGS_WITH_VALUE = {
@@ -124,7 +125,7 @@ def cli(argv: list[str] | None = None) -> argparse.Namespace:
         argv = sys.argv[1:]
 
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--out", type=str, required=True, help="directory to save output results")
+    common.add_argument("--out-dir", type=str, required=True, help="directory to save output results")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="version", version=f"Harvest {__version__}", help="show the version number and exit")
@@ -141,10 +142,16 @@ def cli(argv: list[str] | None = None) -> argparse.Namespace:
 
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    # Example subparser
-    # pex = sub.add_parser("example", parents=[common], help="run the example command")
-    # pex.add_argument("--example-arg", type=str, default="default_value", help="an example argument for the example command")
-    # pex.set_defaults(func=cmd_example)
+    psu = sub.add_parser("sample-unconditional", parents=[common], help="sample unconditional CLM")
+    psu.add_argument("--model-dir", type=str, required=True, help="path to dir trained CLM")
+    psu.add_argument("--device", type=str, default="cpu", help="device to run sampling on (e.g., 'cuda:0' or 'cpu')")
+    psu.add_argument("--num-samples", type=int, default=1000, help="number of samples to take")
+    psu.set_defaults(func=lambda args: cmd_sample_unconditional(
+        model_dir=args.model_dir,
+        out_dir=args.out_dir,
+        device=args.device,
+        nsamples=args.num_samples,
+    ))
 
     args = parser.parse_args(argv)
 

@@ -6,9 +6,8 @@ import inspect
 import os
 
 import torch
-import numpy as np
 from tqdm import tqdm
-from clm.models import RNN, ConditionalRNN
+from clm.models import RNN
 
 from harvest.loader import prep_clm
 
@@ -94,90 +93,37 @@ def sample_unconditional_clm(
             remaining -= this_batch
 
 
-def sample_conditional_clm(
-    model: ConditionalRNN,
-    conditions: np.ndarray,
-    num_samples: int,
-    *,
-    batch_size: int = 1024,
-    max_len: int = 250,
+def cmd_sample_unconditional(
+    model_dir: str,
+    out_dir: str,
     device: str | torch.device,
-    corrupt: bool = False,
-) -> Iterator[str]:
+    nsamples: int,
+) -> None:
     """
-    Sample conditional generative model.
+    Command to sample compounds using an unconditional CLM.
 
-    :param model: conditional CLM model to sample from
-    :param conditions: array of conditional descriptors
-    :param num_samples: number of samples to generate
-    :param batch_size: batch size for sampling
-    :param max_len: maximum length of generated sequences
-    :param device: device to run sampling on
-    :param corrupt: whether to apply corruption to the generated samples
-    :return: generated SMILES strings
+    :param model_dir: path to directory containing trained CLM model(s)
+    :param out_dir: directory to save output results
+    :param device: device to run sampling on (e.g., 'cuda:0' or 'cpu')
+    :param nsamples: total number of samples to generate
+    :return: None
     """
-    model.eval()  # loading sets to eval, but ensure in eval mode
-
-    if isinstance(device, str):
-        device = torch.device(device)
-
-    model.to(device)
-    _sync_model_device(model, device)
-    device_kwargs = _sample_device_kwargs(model.sample, device)
-
-    # 1 x D base tensor
-    base = torch.tensor(conditions, dtype=torch.float32, device=device).unsqueeze(0)
-
-    with torch.inference_mode():
-        remaining = num_samples
-
-        while remaining > 0:
-            this_batch = min(batch_size, remaining)
-            print(f"Sampling batch of {this_batch} compounds...")
-
-            # this_batch x D
-            desc = base.expand(this_batch, -1).contiguous()
-            if corrupt:
-                # desc = corrupt_descriptors(desc, 0.6, 1)
-                raise NotImplementedError("Corruption not implemented yet")
-
-            batch_smiles = model.sample(
-                descriptors=desc,
-                max_len=max_len,
-                return_smiles=True,
-                return_losses=False,
-                **device_kwargs,
-            )
-            
-            # Stream generated SMILES strings
-            for s in batch_smiles:
-                yield s
-
-            remaining -= this_batch
-
-
-def cmd_generate_unconditional(args: argparse.Namespace) -> None:
-    """
-    Command to generate compounds using an unconditional CLM.
-
-    :param args: Parsed command line arguments
-    """
-    model_configs = prep_clm(model_dir=args.model)
+    model_configs = prep_clm(model_dir=model_dir)
 
     # Make sure output dir exists
-    os.makedirs(args.out, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
 
     # Determine device
-    device = torch.device(args.device)
+    device = torch.device(device)
     
     # Determine number of samples per model
     num_models = len(model_configs)
-    samples_per_model = args.nsamples // num_models
-    remainder = args.nsamples % num_models
+    samples_per_model = nsamples // num_models
+    remainder = nsamples % num_models
 
     # We are going to stream generated SMILES to output file
     sampled = 0
-    output_path = os.path.join(args.out, "generated_smiles.smi")
+    output_path = os.path.join(out_dir, "generated_smiles.smi")
     with open(output_path, "w") as out_f:
         for model_idx, model_config in enumerate(tqdm(model_configs, desc="Models", leave=False)):
             
@@ -195,58 +141,3 @@ def cmd_generate_unconditional(args: argparse.Namespace) -> None:
                 # Flush every 1000 samples
                 if sampled % 1000 == 0:
                     out_f.flush()
-
-
-def cmd_generate_conditional(args: argparse.Namespace) -> None:
-    """
-    Command to generate compounds using a Harvest conditional CLM.
-
-    :param args: Parsed command line arguments
-    """
-    model_configs = prep_clm(model_dir=args.model)
-    up_to = args.samp if args.samp is not None else float('inf')
-
-    # Make sure output dir exists
-    os.makedirs(args.out, exist_ok=True)
-
-    # Determine device
-    device = torch.device(args.device)
-
-    # Determine number of samples per model
-    num_models = len(model_configs)
-    samples_per_model = args.nsamples // num_models
-    remainder = args.nsamples % num_models
-
-    # Load all models once
-    models = []
-    for model_idx, model_config in enumerate(model_configs):
-        model = model_config.load_model(device=device)
-        models.append(model)
-
-    output_path = os.path.join(args.out, "generated_smiles_conditional.txt")
-    sampled = 0
-
-    with open(output_path, "w") as out_f, open(args.cond_fp, "r") as cond_f:
-        # Skip header
-        next(cond_f)
-        out_f.write("identifier,model,smiles\n")
-
-        for line_idx, line in enumerate(tqdm(cond_f, desc="Fingerprints")):
-            identifier, *descr_strs = line.strip().split(",")
-            conditions = np.array([float(x) for x in descr_strs], dtype=np.int8)
-
-            for model_idx, model in enumerate(models):
-                # Determine number of samples for this model
-                num_samples = samples_per_model + (remainder if model_idx == num_models - 1 else 0)
-
-                # Sample conditional CLM
-                for s in tqdm(sample_conditional_clm(model, conditions, num_samples, device=device), desc="Samples", leave=False):
-                    out_f.write(f"{identifier},model_{model_idx+1},{s}\n")
-                    sampled += 1
-
-                    # Flush every 1000 samples
-                    if sampled % 1000 == 0:
-                        out_f.flush()
-
-            if line_idx + 1 >= up_to:
-                break
