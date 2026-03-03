@@ -42,4 +42,26 @@ One installed, models can be trained and evaluated using the `harvest` command l
 
 ## Usage
 
-Under development. See `harvest --help` for available commands and options.
+See `harvest --help` for available commands and options.
+
+Train a CLM via the Snakemake workflow from any working directory:
+
+```bash
+harvest train \
+  --configfile /absolute/path/to/config_harvest_cond.yaml \
+  --jobs 10 \
+  --default-resources slurm_partition=skinniderlab \
+  --latency-wait 60 \
+  --rerun-incomplete \
+  --snakemake-args --slurm
+```
+
+Sample an unconditional model:
+
+```bash
+harvest sample-unconditional \
+  --model-dir /absolute/path/to/trained_model_dir \
+  --out-dir /absolute/path/to/output_dir \
+  --device cpu \
+  --num-samples 1000
+```
