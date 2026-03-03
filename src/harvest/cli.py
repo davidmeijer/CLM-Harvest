@@ -7,6 +7,7 @@ import sys
 import shlex
 import subprocess
 
+from harvest.retromol import cmd_run_retromol
 from harvest.version import __version__
 from harvest.sample import cmd_sample_unconditional
 from harvest.train import cmd_train_model
@@ -183,6 +184,28 @@ def cli(argv: list[str] | None = None) -> argparse.Namespace:
         out_dir=args.out_dir,
         device=args.device,
         nsamples=args.num_samples,
+    ))
+
+    # Subparser for parsing compounds with RetroMol's retrosynthesis algorithm
+    pr = sub.add_parser("run-retromol", parents=[common], help="run RetroMol retrosynthesis algorithm on a set of input compounds")
+    pr.add_argument("--data-path", type=str, required=True, help="path to input file containing SMILES strings to run retrosynthesis on")
+    pr.add_argument("--reaction-rules-path", type=str, required=True, help="path to file containing reaction rules for RetroMol")
+    pr.add_argument("--matching-rules-path", type=str, required=True, help="path to file containing matching rules for RetroMol")
+    pr.add_argument("--smiles-col", type=str, default="smiles", help="name of column in input file containing SMILES strings (default: 'smiles')")
+    pr.add_argument("--num-workers", type=int, default=1, help="number of worker processes to use for retrosynthesis (default: 1)")
+    pr.add_argument("--batch-size", type=int, default=2000, help="number of compounds to process in each batch (default: 2000)")
+    pr.add_argument("--pool-chunksize", type=int, default=50, help="chunksize for multiprocessing pool (default: 50)")
+    pr.add_argument("--maxtasksperchild", type=int, default=2000, help="maximum number of tasks to allow each worker process to complete before restarting it (default: 2000)")
+    pr.set_defaults(func=lambda args: cmd_run_retromol(
+        data_path=args.data_path,
+        reaction_rules_path=args.reaction_rules_path,
+        matching_rules_path=args.matching_rules_path,
+        out_dir=args.out_dir,
+        smiles_col=args.smiles_col,
+        num_workers=args.num_workers,
+        batch_size=args.batch_size,
+        pool_chunksize=args.pool_chunksize,
+        maxtasksperchild=args.maxtasksperchild,
     ))
 
     args = parser.parse_args(argv)
