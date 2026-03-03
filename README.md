@@ -56,6 +56,24 @@ harvest train \
   --snakemake-args --slurm
 ```
 
+Override config values from the command line (e.g., `paths.output_dir` and `paths.dataset`):
+
+```bash
+harvest train \
+  --configfile /absolute/path/to/config_harvest_cond.yaml \
+  --jobs 10 \
+  --snakemake-args --config paths.output_dir=/absolute/path/to/output_dir paths.dataset=/absolute/path/to/dataset.smi
+```
+
+If for some reason Snakemake does not allow for dotted keys, pass a YAML mapping for `paths` instead:
+
+```bash
+harvest train \
+  --configfile /absolute/path/to/config_harvest_cond.yaml \
+  --jobs 10 \
+  --snakemake-args --config 'paths={output_dir: /absolute/path/to/output_dir, dataset: /absolute/path/to/dataset.smi}'
+```
+
 Sample an unconditional model:
 
 ```bash
