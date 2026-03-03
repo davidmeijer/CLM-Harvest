@@ -52,9 +52,7 @@ def _resolve_workflow_paths(
         if wf_dir is None:
             wf_dir = _find_workflow_dir()
         if wf_dir is None:
-            raise FileNotFoundError(
-                "Could not locate workflow/Snakefile. Provide --workflow-dir or --snakefile."
-            )
+            raise FileNotFoundError("Could not locate workflow/Snakefile. Provide --workflow-dir or --snakefile.")
         sf_path = wf_dir / "Snakefile"
     elif wf_dir is None:
         wf_dir = sf_path.parent
