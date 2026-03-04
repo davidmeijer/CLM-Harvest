@@ -1,14 +1,17 @@
 """Command line interface for Harvest."""
 
 import argparse
-from datetime import time
+from cmath import log
 import os
 import sys
 import shlex
 import subprocess
+import logging
 
+from harvest.retromol import cmd_run_retromol
 from harvest.version import __version__
 from harvest.sample import cmd_sample_unconditional
+from harvest.train import cmd_train_model
 
 
 _SLURM_FLAGS_WITH_VALUE = {
@@ -35,6 +38,11 @@ def _strip_slurm_flags(argv: list[str]) -> list[str]:
     while i < len(argv):
         arg = argv[i]
 
+        if arg == "--snakemake-args":
+            # Preserve passthrough args verbatim (may include --slurm)
+            cleaned.extend(argv[i:])
+            break
+
         if arg in _SLURM_FLAGS_BOOL:
             i += 1
             continue
@@ -59,8 +67,8 @@ def _submit_via_slurm(slurm_args: argparse.Namespace, cli_argv: list[str]) -> No
     """
     python = sys.executable
 
-    # Get output directory from CLI args
-    output_dir = os.path.abspath(slurm_args.out)
+    # Get output directory from CLI args (fallback to cwd for commands without --out-dir)
+    output_dir = os.path.abspath(getattr(slurm_args, "out", os.getcwd()))
 
     # Ensure log directory exists
     os.makedirs(os.path.join(output_dir, "logs"), exist_ok=True)
@@ -124,9 +132,6 @@ def cli(argv: list[str] | None = None) -> argparse.Namespace:
     if argv is None:
         argv = sys.argv[1:]
 
-    common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--out-dir", type=str, required=True, help="directory to save output results")
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="version", version=f"Harvest {__version__}", help="show the version number and exit")
 
@@ -142,6 +147,35 @@ def cli(argv: list[str] | None = None) -> argparse.Namespace:
 
     sub = parser.add_subparsers(dest="cmd", required=True)
 
+    # Common arguments; Slurm expects an output directory for logs, so we require it for all commands to simplify the interface when using --slurm
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--out-dir", type=str, required=True, help="directory to save output results")
+
+    # Subparser for training the CLM via Snakemake workflow
+    # Output directory is passed through to Snakemake config via --configfile, so we don't need to handle it here
+    pt = sub.add_parser("train", help="train CLM via Snakemake workflow")
+    pt.add_argument("--configfile", type=str, required=True, help="path to Snakemake config YAML")
+    pt.add_argument("--workflow-dir", type=str, default=None, help="path to workflow directory (defaults to repo workflow/)")
+    pt.add_argument("--snakefile", type=str, default=None, help="path to Snakefile (defaults to <workflow-dir>/Snakefile)")
+    pt.add_argument("--jobs", type=int, default=None, help="Snakemake --jobs value")
+    pt.add_argument("--latency-wait", type=int, default=None, help="Snakemake --latency-wait value")
+    pt.add_argument("--rerun-incomplete", action="store_true", help="Snakemake --rerun-incomplete")
+    pt.add_argument("--default-resources", nargs="+", default=None, help="Snakemake --default-resources values (e.g., slurm_partition=skinniderlab)")
+    # Must be last; everything after --snakemake-args is passed verbatim to Snakemake
+    pt.add_argument("--snakemake-args", nargs=argparse.REMAINDER, help="additional args passed to Snakemake (must be last), e.g. --snakemake-args --slurm")
+    pt.set_defaults(func=lambda args: cmd_train_model(
+        configfile=args.configfile,
+        workflow_dir=args.workflow_dir,
+        snakefile=args.snakefile,
+        jobs=args.jobs,
+        latency_wait=args.latency_wait,
+        rerun_incomplete=args.rerun_incomplete,
+        default_resources=args.default_resources,
+        snakemake_args=args.snakemake_args,
+        dry_run=args.dry_run,
+    ))
+
+    # Subparser for sampling the CLM unconditionally
     psu = sub.add_parser("sample-unconditional", parents=[common], help="sample unconditional CLM")
     psu.add_argument("--model-dir", type=str, required=True, help="path to dir trained CLM")
     psu.add_argument("--device", type=str, default="cpu", help="device to run sampling on (e.g., 'cuda:0' or 'cpu')")
@@ -151,6 +185,28 @@ def cli(argv: list[str] | None = None) -> argparse.Namespace:
         out_dir=args.out_dir,
         device=args.device,
         nsamples=args.num_samples,
+    ))
+
+    # Subparser for parsing compounds with RetroMol's retrosynthesis algorithm
+    pr = sub.add_parser("run-retromol", parents=[common], help="run RetroMol retrosynthesis algorithm on a set of input compounds")
+    pr.add_argument("--data-path", type=str, required=True, help="path to input file containing SMILES strings to run retrosynthesis on")
+    pr.add_argument("--reaction-rules-path", type=str, required=True, help="path to file containing reaction rules for RetroMol")
+    pr.add_argument("--matching-rules-path", type=str, required=True, help="path to file containing matching rules for RetroMol")
+    pr.add_argument("--smiles-col", type=str, default="smiles", help="name of column in input file containing SMILES strings (default: 'smiles')")
+    pr.add_argument("--num-workers", type=int, default=1, help="number of worker processes to use for retrosynthesis (default: 1)")
+    pr.add_argument("--batch-size", type=int, default=2000, help="number of compounds to process in each batch (default: 2000)")
+    pr.add_argument("--pool-chunksize", type=int, default=50, help="chunksize for multiprocessing pool (default: 50)")
+    pr.add_argument("--maxtasksperchild", type=int, default=2000, help="maximum number of tasks to allow each worker process to complete before restarting it (default: 2000)")
+    pr.set_defaults(func=lambda args: cmd_run_retromol(
+        data_path=args.data_path,
+        reaction_rules_path=args.reaction_rules_path,
+        matching_rules_path=args.matching_rules_path,
+        out_dir=args.out_dir,
+        smiles_col=args.smiles_col,
+        num_workers=args.num_workers,
+        batch_size=args.batch_size,
+        pool_chunksize=args.pool_chunksize,
+        maxtasksperchild=args.maxtasksperchild,
     ))
 
     args = parser.parse_args(argv)

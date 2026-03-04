@@ -123,8 +123,11 @@ def cmd_sample_unconditional(
 
     # We are going to stream generated SMILES to output file
     sampled = 0
-    output_path = os.path.join(out_dir, "generated_smiles.smi")
+    output_path = os.path.join(out_dir, "generated_smiles.csv")
     with open(output_path, "w") as out_f:
+        # write header
+        out_f.write("smiles\n")
+
         for model_idx, model_config in enumerate(tqdm(model_configs, desc="Models", leave=False)):
             
             # Load model for sampling
