@@ -1,11 +1,12 @@
 """Command line interface for Harvest."""
 
 import argparse
-from datetime import time
+from cmath import log
 import os
 import sys
 import shlex
 import subprocess
+import logging
 
 from harvest.retromol import cmd_run_retromol
 from harvest.version import __version__

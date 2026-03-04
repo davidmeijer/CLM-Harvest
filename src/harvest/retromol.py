@@ -3,10 +3,14 @@
 import json
 import os
 import yaml
+import logging
 from tqdm import tqdm
 
 from retromol.model.rules import RuleSet, ReactionRule, MatchingRule
 from retromol.io.streaming import run_retromol_stream, stream_table_rows
+
+
+log = logging.getLogger(__name__)
 
 
 def load_ruleset(
@@ -24,7 +28,7 @@ def load_ruleset(
         reaction_rules_data = yaml.safe_load(fo)
     reaction_rules: list[ReactionRule] = [ReactionRule.from_dict(d) for d in reaction_rules_data]
 
-    with open(matching_rules_path, "f") as fo:
+    with open(matching_rules_path, "r") as fo:
         matching_rules_data = yaml.safe_load(fo)
     matching_rules: list[MatchingRule] = [MatchingRule.from_dict(d) for d in matching_rules_data]
 
