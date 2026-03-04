@@ -44,6 +44,8 @@ One installed, models can be trained and evaluated using the `harvest` command l
 
 See `harvest --help` for available commands and options.
 
+### Train a CLM
+
 Train a CLM via the Snakemake workflow from any working directory:
 
 ```bash
@@ -74,6 +76,8 @@ harvest train \
   --snakemake-args --config 'paths={output_dir: /absolute/path/to/output_dir, dataset: /absolute/path/to/dataset.smi}'
 ```
 
+### Sample an unconditional CLM
+
 Sample an unconditional model:
 
 ```bash
@@ -83,3 +87,19 @@ harvest sample-unconditional \
   --device cpu \
   --num-samples 1000
 ```
+
+See `harvest sample-unconditional --help` for more options when sampling the unconditional CLM.
+
+### Parse compounds with RetroMol
+
+Parse compounds with RetroMol:
+
+```bash
+harvest run-retromol \
+  --data-path /absolute/path/to/input_file.csv \
+  --reaction-rules-path /absolute/path/to/reaction_rules.yaml \
+  --matching-rules-path /absolute/path/to/matching_rules.yaml \
+  --out-dir /absolute/path/to/output_dir \
+```
+
+You can adjust the number of workers with `--num-workers` to improve performance when parsing large datasets with RetroMol. See `harvest run-retromol --help` for more details.
